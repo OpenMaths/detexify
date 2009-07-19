@@ -3,17 +3,16 @@ require 'math'
 
 module Detexify
 
-  module Online
+  module Preprocessors
 
-    module Preprocessors
-      
+    module Strokes
+
       # TODO class FitInside
       #   DEFAULT_OPTIONS = { :x => 0.0..1.0, :y => 0.0..1.0 }
       #   def process strokes
-      
+
       # TODO class LineDensity 
-      
-      # TODO Tests needed!
+
       class EquidistantPoints
 
         DEFAULT_OPTIONS = { :distance => 0.01 }
@@ -52,9 +51,14 @@ module Detexify
         end
 
       end # class EquidistantPoints
+      
+      # take strokes and make an (rmagick?) image out of it
+      class ToImage
+        
+      end # class StrokesToImage
 
-    end # module Preprocessors
+    end # module Strokes
 
-  end # module Online
+  end # module Preprocessors
 
 end

@@ -2,72 +2,70 @@
 
 $(function(){
   // requests to classinatra  
-  var abort;
-  
-  function train(tex, canvas) {
-    $.post("/train", { "tex": tex, "url": canvas.toDataURL(), "strokes": JSON.stringify(canvas.strokes) }, function() {
-      $('#spinner').hide('scale'); // TODO use different spinner   
-      alert('Thanks for training!'); // TODO make this better
-    });
-  }
-  
+  var abort, active;
+    
   function classify(canvas) {
     abort = false;
-    var url = canvas.toDataURL();
-    $('#spinner').show('scale');
-    $.post("/classify", { "url": url, "strokes": JSON.stringify(canvas.strokes) }, function(json) {
+    if (active === 0) {
+      $('#canvasspinner').show('scale');      
+    }
+    active = active + 1;
+    $.post("/classify", {"strokes": JSON.stringify(canvas.strokes) }, function(json) {
       if (!abort) {
-        $('#spinner').hide('scale');    
-        $('#hitlist').empty();
-        //$('#classinatra').text('Es wurde '+json.url+' angefordert.');
-        jQuery.each( json.hits, function() {
-          $('#hitlist').append('<tr class="tiptrigger"><td><code>'+this.tex+'</code></td><td class="symbol"><img alt="tex:'+this.tex+'"/></td><td class="score">'+this.score+'</td></tr>').show();
-        });
-        $('#more').show();
-        // now add tooltip behavior
-        var setuptips = function() {
-          $('#hitlist .tiptrigger').tooltip(
-            {
-              tip: '#hittip', position: ['center', 'right'],
-              delay: 0, effect: 'toggle', offset: [0,-100],
-              onBeforeShow: function() {
-                var trigger = this.getTrigger();
-                $('a', this.getTip()).unbind('click').click(function(){
-                  $('#spinner').show('scale'); // TODO use different spinner   
-                  train($('code', trigger).text(), canvas);
-                });
-              }
-            }
-          );
+        active = active - 1;
+        if (active === 0) {
+          $('#canvasspinner').hide('scale');
         }
-        setuptips();
-        mathtex.init();
-        $('#hitarea').show();
+        populateSymbolList(json.best);
+        $('#morearea').show();
+        latex.init();
+        var setuptraining = function() {
+          $('#symbols li .symbol img')
+            .wrap('<a href="#"></a>')
+            .tooltip({ tip: '#traintip' })
+            .click(function(){
+              $.gritter.add({title:'Thanks!', text:'Thank you for training!', time: 1000})
+              $(this).tooltip(0).hide();
+              $('#canvasspinner').show('scale');            
+              train($(this).attr('alt').substring(7), canvas, function(json){
+                // TODO DRY
+                $('#canvasspinner').hide('scale');
+                if (json.message) {
+                  $.gritter.add({title:'Success!', text: json.message, time: 1000})
+                } else {
+                  $.gritter.add({title:'Error!', text: json.error, time: 1000})
+                }
+                });
+              return false;
+              });
+        }
+        setuptraining();
         // setup all list
-        $('#more a').unbind('click').click(function(){
-          $('#more').hide();
-          $('#hitlist').empty();
-          jQuery.each( json.all, function() {
-            $('#hitlist').append('<tr class="tiptrigger"><td><code>'+this.tex+'</code></td><td class="symbol"><img alt="tex:'+this.tex+'"/></td><td class="score">'+this.score+'</td></tr>').show();
-          });          
-          setuptips();
-          mathtex.init();
+        $('#more').unbind('click').click(function(){
+          $('#morearea').hide();
+          populateSymbolList(json.all);
+          latex.init();
+          setuptraining();
+          return false;
         });
+        $('#hitarea').show();
       }
     }, 'json');
   }
   
   // Canvas
   var c = $("#tafel").get(0);
+  canvassify(c, classify);
+  active = 0;
   $('#clear').click(function(){
     abort = true;
+    active = 0;
     c.clear();
     $('#hitarea').hide();
-    $('#hitlist').empty();
-    $('#spinner').hide();    
+    $('#symbols').empty();
+    $('#canvasspinner').hide();    
     return false;
   });
-  canvassify(c, classify);
   $("#canvaserror").hide();
-  mathtex.init();
+  latex.init();
 });
