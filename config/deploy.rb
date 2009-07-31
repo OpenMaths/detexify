@@ -54,8 +54,8 @@ namespace :thin do
   %w(start stop restart).each do |action| 
   desc "#{action} the app's Thin Cluster"  
     task action.to_sym, :roles => :app do
-      run "source /home/#{user}/.couch"
-      run "thin #{action} -c #{deploy_to}/current -C #{deploy_to}/current/config/thin.yml" 
+      run ". /home/#{user}/.couch; thin #{action} -c #{deploy_to}/current -C #{deploy_to}/current/config/thin.yml",
+        :shell => 'zsh'
     end
   end
 end
