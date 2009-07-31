@@ -2,7 +2,14 @@ require 'json'
 require 'sinatra'
 require 'classifier.rb' 
 
-CLASSIFIER = Detexify::Classifier.new(Detexify::Extractors::Strokes::Features.new)
+COUCH = ENV['COUCH'] || "http://127.0.0.1:5984/detexify"
+CLASSIFIER = Detexify::Classifier.new(COUCH, Detexify::Extractors::Strokes::Features.new)
+
+%w(/en/classify /de/classify).each do |path|
+  get path do
+    redirect '/classify.html'    
+  end
+end
 
 get '/' do
   redirect '/classify.html'
@@ -43,9 +50,11 @@ post '/train' do
   # TODO return new list of symbols and counts
 end
 
+# classifies a set of strokes
+# post param 'strokes' must be [['x':int x, 'y':int y, 't':int time], [...]]
 post '/classify' do
   halt 401, 'I want some payload' unless params[:strokes]
   strokes = JSON params[:strokes]
-  best, all = CLASSIFIER.classify strokes
-  JSON :best => best, :all => all
+  hits = CLASSIFIER.classify strokes
+  JSON hits
 end

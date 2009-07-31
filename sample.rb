@@ -1,8 +1,6 @@
 module Detexify
     
   class Sample < CouchRest::ExtendedDocument
-    DB = ENV['COUCH'] || "http://127.0.0.1:5984/detexify"
-    use_database CouchRest.database!(DB)
     property :feature_vector
     property :strokes
     property :symbol_id
@@ -27,28 +25,41 @@ module Detexify
       @symbol_id = sample.symbol_id.to_sym # to_sym so only one instance of the string exists
     end
     
+    def == other
+      @symbol_id == other.symbol_id && @feature_vector == other.feature_vector
+    end
+    
   end
   
-  class Samples
+  class MiniSampleContainer
     
     include Enumerable
     
-    def initialize
-      @minisamples = []
-    end
-    
-    def each &block
-      @minisamples.each &block
+    def initialize limit
+      @limit = limit
+      @hash = Hash.new { |h,v| h[v] = [] }
     end
     
     def << sample
-      sample = [sample] unless sample.is_a? Array
-      sample.each do |s|
-        @minisamples << MiniSample.new(s)
-      end
+      sample =  MiniSample.new(sample) unless sample.is_a? MiniSample
+      a = @hash[sample.symbol_id]
+      a << sample
+      a.shift if a.size > @limit
       self
+    end  
+      
+    def each &block
+      @hash.each do |id, a|
+        a.each do |sample|
+          yield sample
+        end
+      end
+    end
+    
+    def for_id id
+      @hash[id]
     end
     
   end
-
+  
 end

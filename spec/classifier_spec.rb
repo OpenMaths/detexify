@@ -5,21 +5,21 @@ require 'classifier'
 describe Detexify::Classifier do
 
   before do
-    Detexify::Sample::database.recreate!
+    @db = CouchRest.database! TESTCOUCH
     @symbol = Latex::Symbol::List.first
     @strokes = [[{'x'=>0, 'y'=>0}, {'x'=>1, 'y'=>1}]]
-    @sample = Detexify::Sample.new({
+    @samples = Detexify::Sample.on(@db)
+    @sample = @samples.new({
       :strokes => @strokes, :feature_vector => [0], :symbol_id => @symbol.id
     })
     @sample.create!
-    Detexify::Sample.count.should be(1)
-    # instantiate now so that database is properly loaded
-    @classifier = Detexify::Classifier.new lambda { |strokes| [rand 10] }
+    #@samples.count.should be(1) # bug in couchrest TODO check if mattetti pulled my fix
+    @classifier = Detexify::Classifier.new TESTCOUCH, lambda { |strokes| [rand 10] }
     @classifier.wait_until_loaded
   end
   
   after do
-    Detexify::Sample::database.recreate!
+    @db.delete!
   end
   
   it "should load the database and have the correct sample count" do
@@ -27,21 +27,19 @@ describe Detexify::Classifier do
   end
 
   it "should classify a new sample" do
-    best, all = @classifier.classify(@strokes)
-    best.should have(1).element
-    all.should have(Latex::Symbol::List.size).elements
+    res = @classifier.classify(@strokes)
+    res.should have(Latex::Symbol::List.size).elements
 
     # verify structure of response
-    [best, all].each do |a|
-      a.should be_an(Array)
-      a.should_not be_empty
-      a.each do |element|
-        element.should be_a(Hash)
-        element.should have_key(:symbol)
-        element.should have_key(:score)
-      end      
-    end
+    res.should be_an(Array)
+    res.each do |hit|
+      hit.should be_a(Hash)
+      hit.should have_key(:symbol)
+      hit.should have_key(:score)
+    end      
   end
+  
+  it "should limit the results if requested"
   
   it "should train a legal symbol" do
     lambda { @classifier.train(@symbol.id, @strokes) }.should_not raise_error
@@ -60,9 +58,7 @@ describe Detexify::Classifier do
       (Detexify::Classifier::SAMPLE_LIMIT-1).times { @classifier.train(@symbol.id, @strokes) }
     end
     
-    it "should not train that symbol again" do
-      lambda { @classifier.train(@symbol.id, @strokes) }.should raise_error(Detexify::Classifier::TooManySamples)
-    end
+    it "should train that symbol again but don't load it into memory"
     
   end
   
