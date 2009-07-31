@@ -36,21 +36,24 @@ role :app, domain
 role :web, domain
  
 namespace :deploy do
-  task :start, :roles => :app do
-    run "touch #{current_release}/tmp/restart.txt"
-  end
-
-  task :stop, :roles => :app do
-    # Do nothing.
-  end
-
-  desc "Restart Application"
-  task :restart, :roles => :app do
-    run "touch #{current_release}/tmp/restart.txt"
-  end
+  %w(start stop restart).each do |action| 
+     desc "#{action} the Thin processes"  
+     task action.to_sym do
+       find_and_execute_task("thin:#{action}")
+    end
+  end 
   
   task :cold do
      deploy.update
      deploy.start
+  end
+end
+
+namespace :thin do  
+  %w(start stop restart).each do |action| 
+  desc "#{action} the app's Thin Cluster"  
+    task action.to_sym, :roles => :app do  
+      run "thin #{action} -c #{deploy_to}/current -C #{deploy_to}/current/config/thin.yml" 
+    end
   end
 end
