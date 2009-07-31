@@ -55,7 +55,7 @@ namespace :thin do
   %w(start stop restart config).each do |action| 
   desc "#{action} the app's Thin Cluster"  
     task action.to_sym, :roles => :app do  
-      run "thin #{action} -c #{deploy_to}/current -C #{deploy_to}/current/config/thin.yml" 
+      run "thin #{action} -c #{deploy_to}/current -C #{deploy_to}/current/config/detexify-thin.yml" 
     end
   end
 end
