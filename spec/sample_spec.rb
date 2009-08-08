@@ -4,9 +4,7 @@ require 'sample'
 
 describe Detexify::Sample do
   before do
-    @mongo = XGen::Mongo::Driver::Mongo.new('localhost')
-    @mongo.drop_database('detexify-test')
-    @db = @mongo.db('detexify-test')
+    @db = setup_db
     @limit = 2
     Detexify::Sample.db = @db
     Detexify::Sample.sample_limit = @limit
@@ -16,12 +14,17 @@ describe Detexify::Sample do
   end
   
   after do
-    @mongo.drop_database('detexify-test')
+    teardown_db
   end
   
   it "can be saved" do
     sample = Detexify::Sample.new('strokes' => @strokes, 'feature_vector' => [1], 'symbol_id' => @symbol.id)
     lambda { sample.save }.should_not raise_error     
+  end
+  
+  it "will be counted" do
+    Detexify::Sample.new('strokes' => @strokes, 'feature_vector' => [1], 'symbol_id' => @symbol.id).save
+    Detexify::Sample.count(@symbol.id).should == 1
   end
   
   describe "a stripped sample" do
@@ -80,7 +83,7 @@ describe Detexify::Sample do
     describe "and loaded fresh" do
       before(:all) do
         Detexify::Sample.unload
-        Detexify::Sample.load(true)
+        Detexify::Sample.load
       end
       
       it "should iterate over @limit items" do

@@ -1,6 +1,16 @@
-TESTCOUCH = ENV['COUCH'] = "http://127.0.0.1:5984/test_detexify"
+require 'mongo'
+MONGO = XGen::Mongo::Driver::Mongo.new('localhost')
+
+def setup_db
+  MONGO.drop_database('detexify-test')
+  MONGO.db('detexify-test')  
+end
+
+def teardown_db
+  MONGO.drop_database('detexify-test')
+end
+
 # require 'spec/autorun'
-require 'erb'
 $LOAD_PATH << File.join(File.dirname(__FILE__), '..')
 
 require 'symbol'

@@ -5,33 +5,32 @@ require 'classifier'
 describe Detexify::Classifier do
 
   before do
-    @db = CouchRest.database! TESTCOUCH
+    @db = setup_db
+    @limit = 2
+    Detexify::Sample.db = @db
+    Detexify::Sample.sample_limit = @limit
     @symbol = Latex::Symbol::List.first
+    
     @strokes = [[{'x'=>0, 'y'=>0}, {'x'=>1, 'y'=>1}]]
-    @samples = Detexify::Sample.on(@db)
+    @samples = Detexify::Sample
     # put 10 samples in db
     @count = 10
-    (@count -1).times do
+    (@count -1).times do |i|
       @samples.new({
-        :strokes => @strokes, :feature_vector => [1], :symbol_id => @symbol.id
-      }).create!
+        'strokes' => @strokes, 'feature_vector' => [i], 'symbol_id' => @symbol.id
+      }).save
     end
     @sample = @samples.new({
-      :strokes => @strokes, :feature_vector => [0], :symbol_id => @symbol.id
+      'strokes' => @strokes, 'feature_vector' => [0], 'symbol_id' => @symbol.id
     })
-    @sample.create!
-    @classifier = Detexify::Classifier.new TESTCOUCH, lambda { |strokes| [rand 10] }
-    @classifier.wait_until_loaded
+    @sample.save
+    @classifier = Detexify::Classifier.new lambda { |strokes| [0] }
   end
   
   after do
-    @db.delete!
+    teardown_db
   end
   
-  it "should load the database and have the correct sample count" do
-    @classifier.samples.count.should be(@count)
-  end
-
   it "should classify a new sample" do
     res = @classifier.classify(@strokes)
     res.should have(Latex::Symbol::List.size).elements
@@ -87,7 +86,7 @@ describe Detexify::Classifier do
     
     before do
       # Symbol is in database once. Add another SAMPLE_LIMIT - 1 times.
-      (Detexify::Classifier::SAMPLE_LIMIT-1).times { @classifier.train(@symbol.id, @strokes) }
+      @limit.times { @classifier.train(@symbol.id, @strokes) }
     end
     
     it "should train that symbol again but don't load it into memory"
@@ -95,11 +94,8 @@ describe Detexify::Classifier do
   end
   
   it "have correct sample counts" do
-    @classifier.sample_counts[@symbol.id].should == @count
     @classifier.count_samples(@symbol.id).should == @count
     @classifier.count_samples(@symbol).should == @count
-    @classifier.sample_counts['foo'].should == 0 #IllegalSymbolId ?
-    @classifier.count_samples('bar').should == 0
   end
   
   it "should regenerate features"

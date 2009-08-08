@@ -2,8 +2,7 @@ require 'json'
 require 'sinatra'
 require 'classifier.rb' 
 
-COUCH = ENV['COUCH'] || "http://127.0.0.1:5984/detexify"
-CLASSIFIER = Detexify::Classifier.new(COUCH, Detexify::Extractors::Strokes::Features.new)
+CLASSIFIER = Detexify::Classifier.new(Detexify::Extractors::Strokes::Features.new)
 
 get '/status' do
   JSON :loaded => CLASSIFIER.loaded?, :progress => CLASSIFIER.progress
@@ -12,8 +11,7 @@ end
 get '/symbols' do
   symbols = CLASSIFIER.symbols.map { |s| s.to_hash }
   # update with counts
-  sample_counts = CLASSIFIER.sample_counts
-  JSON symbols.map { |symbol| symbol.update(:samples => sample_counts[symbol[:id]]) }
+  JSON symbols.map { |symbol| symbol.update(:samples => Classifier.count_samples(symbol)) }
 end
 
 post '/train' do

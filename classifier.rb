@@ -11,29 +11,19 @@ module Detexify
   class Classifier
 
     K = 5
-    SAMPLE_LIMIT = 50
 
-    def initialize dburl, extractor, options = {}
-      @couch = CouchRest.database!(dburl) # TODO allow other databases than CoucDB? via Adapters
-      # http:// -> couchdb via Couchrest, mysql:// -> ..., sqlite:// -> ... via Sequel?
-      # Sample.use_database @couch # this line looks wrong but it is there in the couchrest specs
-      @samples = Sample.on(@couch)
+    def initialize extractor, options = {}
       @extractor = extractor
-      @progress = 0
-      @minisamples = MiniSampleContainer.new SAMPLE_LIMIT
-      @sample_counts = Hash.new { |h,k| h[k] = 0 }
-      load_samples
+      Sample.load # TODO maybe load lazy?
     end
     
     # returns load status in percent
-    attr_reader :progress
+    def progress
+      Sample.progress
+    end
     
     def loaded?
-      @progress == 100
-    end
-
-    def samples
-      @minisamples# || load_samples
+      Sample.progress == 100
     end
 
     def symbols
@@ -44,17 +34,11 @@ module Detexify
       Latex::Symbol[id]
     end
 
-    attr_reader :sample_counts
-
     def count_samples symbol
-      if symbol.respond_to? :to_sym
-        @sample_counts[symbol.to_sym]
-      else # should be a symbol
-        @sample_counts[symbol.id]
-      end
+      Sample.count symbol.to_sym
     end
 
-    # errors for use with train an classify
+    # errors for use with train and classify
     IllegalSymbolId = Class.new(ArgumentError)
     DataMessedUp = Class.new(ArgumentError)
     TooManySamples = Class.new(RuntimeError)
@@ -66,10 +50,8 @@ module Detexify
       #raise TooManySamples if count_samples(id) >= SAMPLE_LIMIT
       # TODO offload feature extraction to a job queue
       f = extract_features strokes
-      sample = @samples.new(:symbol_id => id, :feature_vector => f, :strokes => strokes)
+      sample = Sample.new('symbol_id' => id, 'feature_vector' => f, 'strokes' => strokes)
       sample.save
-      samples << sample
-      @sample_counts[id.to_sym] += 1
     end
 
     def classify strokes, options = {} # TODO modules KNN, Mean, etc. for different classifier types? 
@@ -78,6 +60,7 @@ module Detexify
       # use nearest neighbour classification
       # sort by distance and find minimal distance for each command
       minimal_distance_hash = {}
+      samples = Sample.enum_for(:each_stripped)
       sorted = samples.sort_by do |sample|
         # FIXME catch exception Dimension mismatch here
         d = distance(Vector.elements(f), Vector.elements(sample.feature_vector))
@@ -125,32 +108,11 @@ module Detexify
       @extractor.call(strokes)
     end
     
-    def wait_until_loaded
-      @load_thread.join if @load_thread
-    end
-
     private
     
     def data_ok? strokes
       # TODO more and better checks
       strokes.is_a?(Array)
-    end
-
-    def load_samples
-      # load by symbol in a new thread
-      Thread.abort_on_exception = true
-      @load_thread = Thread.new do
-        symbols.each_with_index do |symbol,i|
-          # TODO allow more concurrent requests or load in batches
-          samples = @samples.by_symbol_id(:key => symbol.id)
-          # only load 100 randomly selected samples into the memory
-          samples.sort_by { rand }[0,SAMPLE_LIMIT].each { |sample| @minisamples << MiniSample.new(sample) }
-          @sample_counts[symbol.id] += samples.size
-          @progress = 100*(i+1)/symbols.size
-          # puts "#{symbol} loaded. #{@progress} % done..."
-        end
-      end
-      @minisamples
     end
 
   end
