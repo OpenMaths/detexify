@@ -14,6 +14,9 @@ module Detexify
 
     def initialize extractor, options = {}
       @extractor = extractor
+      if defined? L
+        L.debug "loading samples..."
+      end
       Sample.load # TODO maybe load lazy?
     end
     
@@ -47,6 +50,12 @@ module Detexify
     def train id, strokes
       raise IllegalSymbolId unless Latex::Symbol[id]
       raise DataMessedUp unless data_ok?(strokes)
+      # preprocess
+      strokes.each do |stroke|
+        stroke.each do |point|
+          point['t'] = point['t'].to_f
+        end
+      end
       #raise TooManySamples if count_samples(id) >= SAMPLE_LIMIT
       # TODO offload feature extraction to a job queue
       f = extract_features strokes

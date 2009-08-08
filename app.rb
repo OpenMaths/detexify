@@ -1,7 +1,9 @@
 require 'json'
 require 'sinatra'
 require 'classifier.rb' 
+require 'logger'
 
+L = Logger.new STDOUT
 CLASSIFIER = Detexify::Classifier.new(Detexify::Extractors::Strokes::Features.new)
 
 get '/status' do
@@ -11,7 +13,7 @@ end
 get '/symbols' do
   symbols = CLASSIFIER.symbols.map { |s| s.to_hash }
   # update with counts
-  JSON symbols.map { |symbol| symbol.update(:samples => Classifier.count_samples(symbol)) }
+  JSON symbols.map { |symbol| symbol.update(:samples => CLASSIFIER.count_samples(symbol[:id])) }
 end
 
 post '/train' do

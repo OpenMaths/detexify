@@ -109,7 +109,7 @@ module Detexify
       # create db cache as capped collection
       sid = @sample['symbol_id'].to_s
       hid = sid#.to_s # Digest::SHA1.hexdigest(sid)
-      unless @@db.collection_names.include? hid
+      unless @@db.collection_names.include? "detexify.#{hid}" # FIXME
         @@db.create_collection hid, :capped => true, :max => @@sample_limit
       end
       @@db.collection(hid).save(@sample.dup.delete_if { |k,_| k != 'feature_vector' })
@@ -130,7 +130,7 @@ module Detexify
       Latex::Symbol::List.each do |symbol|
         sid = symbol.to_sym.to_s
         hid = sid#.to_s # Digest::SHA1.hexdigest(sid)
-        if @@db.collection_names.include? hid # yeah! cached samples in db
+        if @@db.collection_names.include? "detexify.#{hid}" # FIMXE # yeah! cached samples in db
           @@db.collection(hid).find().each do |h|
             @@memcache << self.new(h.update('symbol_id' => sid)).strip!
           end
@@ -144,6 +144,9 @@ module Detexify
           end
         end
         @@progress.inc
+        if defined? L
+          L.debug "loading #{progress} % done"
+        end
       end # Latex::Symbol::List.each
       @@loaded = true
     end
