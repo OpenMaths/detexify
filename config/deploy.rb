@@ -35,6 +35,8 @@ set :use_sudo, false
 set :domain, "173.45.228.87"
 role :app, domain
 role :web, domain
+role :db, domain, :primary => true
+
  
 set :runner, user
 set :admin_runner, user
