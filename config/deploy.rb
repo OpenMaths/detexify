@@ -20,42 +20,48 @@ set :application, "detexify"
 
 set :user, 'kirel'
 
-set :deploy_to, "/home/#{user}/#{application}"
+set :deploy_to, "/home/#{user}/www/#{application}"
  
 default_run_options[:pty] = true
 set :scm, :git
-set :repository,  "git@github.com:kirel/detexify.git"
-set :branch, "capthin"
+set :repository, "git@github.com:kirel/detexify.git"
+set :branch, "deploy"
 set :deploy_via, :remote_cache
  
 set :ssh_options, { :forward_agent => true }
 set :port, 7822
 set :use_sudo, false
 
-set :domain, "kirelabs.org"
+set :domain, "173.45.228.87"
 role :app, domain
 role :web, domain
  
+set :runner, user
+set :admin_runner, user
+ 
 namespace :deploy do
-  %w(start stop restart).each do |action| 
-     desc "#{action} the Thin processes"  
-     task action.to_sym do
-       find_and_execute_task("thin:#{action}")
-    end
-  end 
-  
+  task :start, :roles => [:web, :app] do
+    run "cd #{deploy_to}/current && nohup thin -C config/thin.yml -R config.ru start"
+  end
+ 
+  task :stop, :roles => [:web, :app] do
+    run "cd #{deploy_to}/current && nohup thin -C config/thin.yml -R config.ru stop"
+  end
+ 
+  task :restart, :roles => [:web, :app] do
+    deploy.stop
+    deploy.start
+  end
+ 
+  # This will make sure that Capistrano doesn't try to run rake:migrate (this is not a Rails project!)
   task :cold do
-     deploy.update
-     deploy.start
+    deploy.update
+    deploy.start
   end
 end
-
-namespace :thin do  
-  %w(start stop restart).each do |action| 
-  desc "#{action} the app's Thin Cluster"  
-    task action.to_sym, :roles => :app do
-      run ". /home/#{user}/.couch; thin #{action} -c #{deploy_to}/current -C #{deploy_to}/current/config/thin.yml",
-        :shell => 'zsh'
-    end
+ 
+namespace :kirel do
+  task :log do
+    run "cat #{deploy_to}/current/log/thin.log"
   end
 end
