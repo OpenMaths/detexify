@@ -46,7 +46,7 @@ module Detexify
 
   class Sample
 
-    @@sample_limit = 23+42
+    @@sample_limit = 42
     @@db = XGen::Mongo::Driver::Mongo.new(ENV['mongo'] || 'localhost').db("detexify")
     # there will also be capped collections for each id
 
