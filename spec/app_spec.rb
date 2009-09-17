@@ -66,7 +66,7 @@ describe 'The Sinatra classifier' do
     r.each do |element|
       element.should be_a(Hash)
       %w(id command mathmode textmode samples).each do |key|
-        element.should have_key key        
+        element.should have_key(key)
       end
     end
   end

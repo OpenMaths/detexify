@@ -781,7 +781,7 @@
     - \hookrightarrow
     - \Longleftrightarrow
     - \searrow
-#    - \leadsto
+#    - \leadsto # TODO this is a amssymb arrow
     - \longmapsto
     - \swarrow
     - \leftarrow
